@@ -1,4 +1,4 @@
 pytext
 ======
 
-O script auxilia a criação de um campo de texto utilizando a engine pygame na linguagem python.
+A biblioteca pytext, atraves da engine pygame, em python, cria um campo de texto rico que pode ser modificado em tempo de execução.
