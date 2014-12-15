@@ -18,16 +18,44 @@ pygame.init()
 
 class DisplayObject(object):
 
-    def __init__(self, bounds=None, visible=True, color=(100,100,100,100)):
+    display_count = 0
+
+    def __init__(self, name="", bounds=None, visible=True, color=(100,100,100,100)):
 
         self._bounds = self.checkBounds(bounds)
         self._visible = visible
 
+        self.name = name if name else "DisplayObject"+str(DisplayObject.display_count)
         self.color = color
         self.children = []
         self.parent = None
         self.onVisible = EventHook()
         self.offVisible = EventHook()
+
+        DisplayObject.display_count += 1
+
+    def __getitem__(self, key):
+        return self.findChildByName( key )
+
+    def __missing__(self, key):
+        return None
+
+    def __delitem__(self, key):
+        self.removeChildByName(key)
+
+    def __contains__(self, item):
+        return self.isChildren(item)
+
+    def __iter__(self):
+        return self.children
+
+    def findChildByName(self, key, maxDepth=False):
+        for c in self.children:
+            if c.name == key: return c
+            if maxDepth:
+                result = c.findChildByName( key, True )
+                if result: return result
+        return None
 
     @property
     def worldX(self):
@@ -183,6 +211,10 @@ class DisplayObject(object):
             del self.children[index]
             displayObject.parent = None
 
+    def removeChildByName(self, name):
+        target = self.getChildByName(name)
+        if target: self.removeChild(target)
+
     def addChild(self, displayObject, childDepth=99999, changePositionToRelative=False):
         if displayObject.parent: displayObject.parent.removeChild(displayObject)
         self.children.insert( min(len(self.children), childDepth), displayObject)
@@ -190,7 +222,7 @@ class DisplayObject(object):
         if changePositionToRelative: displayObject.move(displayObject.worldX, displayObject.worldY)
 
     def removeAllChildren(self):
-        for i in range(len(self.children), -1, -1):
+        for i in range(len(self.children)-1, -1, -1):
             self.removeChild(self.children[i])
 
     def checkBounds(self, bounds):
@@ -225,8 +257,8 @@ class DisplayMask( DisplayObject ):
             parent = parent.parent
         return None
 
-    def __init__(self, bounds=None, visible=True, color=(100,100,100,100)):
-        super( DisplayMask, self ).__init__( bounds, visible, color )
+    def __init__(self, name="", bounds=None, visible=True, color=(100,100,100,100)):
+        super( DisplayMask, self ).__init__( name, bounds, visible, color )
         self._scrollH = 0
         self._scrollV = 0
         self.image = pygame.Surface((1000, 1000), pygame.SRCALPHA)
@@ -262,8 +294,8 @@ class DisplayMask( DisplayObject ):
 
 class InteractiveObject( DisplayObject ):
 
-    def __init__(self, bounds=None, visible=True, color=(100,100,100,100), selectable=True):
-        super(InteractiveObject, self).__init__(bounds, visible, color)
+    def __init__(self, name="", bounds=None, visible=True, color=(100,100,100,100), selectable=True):
+        super(InteractiveObject, self).__init__(name, bounds, visible, color)
         self.selectable = selectable
         self.onFocus = EventHook()
         self.offFocus = EventHook()
@@ -300,7 +332,7 @@ class InteractiveObject( DisplayObject ):
         pass
 
     def mouseWheel(self, scroll):
-        print "MOUSE WHEEL: ", scroll
+        pass
 
     def enterFocus(self):
         self._isFocus = True
@@ -319,7 +351,7 @@ class DisplayManager( DisplayObject ):
         return point[0] >= x and point[1] >= y and point[0] < x+display.width and point[1] < y+display.height
 
     def __init__(self, visible=True, color=(100,100,100,100)):
-        super(DisplayManager, self).__init__(None, visible, color)
+        super(DisplayManager, self).__init__("", None, visible, color)
 
         self.selectorView = DisplayObject( color=(255, 0, 0, 100) )
         self.selected = None
@@ -339,7 +371,8 @@ class DisplayManager( DisplayObject ):
     def setFocus(self, interactiveObject):
         if self.selected: self.selected.exitFocus()
         self.selected = interactiveObject
-        if self.selected: self.selected.enterFocus()
+        if self.selected:
+            self.selected.enterFocus()
 
     def distance(self, x0, y0, x1, y1):
         x, y = x0-x1, y0-y1

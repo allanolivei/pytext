@@ -1,4 +1,5 @@
 __author__ = 'Allan'
+
 from text import *
 from math import *
 
@@ -9,8 +10,8 @@ class UIImage(DisplayObject):
     TYPE_NINESLICE = 1
     TYPE_REPEAT = 2
 
-    def __init__(self, imageAddress, bounds=None, autoAdjust=True, visible=True, imageType=TYPE_NORMAL, color=COLOR_DEFAULT, nineRect=None, fillCenter=False):
-        super(UIImage, self).__init__(bounds, visible, color)
+    def __init__(self, imageAddress, name="", bounds=None, autoAdjust=True, visible=True, imageType=TYPE_NORMAL, color=COLOR_DEFAULT, nineRect=None, fillCenter=False):
+        super(UIImage, self).__init__(name, bounds, visible, color)
 
         self.__imageAddress = None
 
@@ -96,12 +97,12 @@ class UIImage(DisplayObject):
 
 class UIGrid( DisplayObject ):
 
-    def __init__(self, distanceHorizontal, distanceVertical, numberOfColumns=999,
-                 bounds=None, visible=True, color=(100,100,100,100)):
-        super(UIGrid, self).__init__( bounds, visible, color )
+    def __init__(self, distanceHorizontal, distanceVertical, numberOfColumns=1,
+                 name="", bounds=None, visible=True, color=(100,100,100,100)):
+        super(UIGrid, self).__init__( name, bounds, visible, color )
         self.distanceVertical = distanceVertical
         self.distanceHorizontal = distanceHorizontal
-        self.numberOfColumns = numberOfColumns
+        self.numberOfColumns = max(numberOfColumns, 1)
 
     def updateGrid(self):
         total = len(self.children)
@@ -129,9 +130,10 @@ class UIButton( InteractiveObject ):
     ALIGN_RIGHT = 1
     ALIGN_CENTER = 0.5
 
-    def __init__( self, bounds=None, visible=True, color=(100,100,100,100), selectable=True,
+    def __init__( self, name="", bounds=None, visible=True, color=(100,100,100,100), selectable=True,
                   label="", font=None, normalBackground=None, autoAdjust=True, padding=(14,4,14,4), onClickHandler=None, align=ALIGN_CENTER, data=None ):
-        super(UIButton, self).__init__( bounds, visible, color, selectable )
+        super(UIButton, self).__init__( name, bounds, visible, color, selectable )
+
         self.onClick = EventHook()
         self.textfield = None
         self.background = None
@@ -140,10 +142,12 @@ class UIButton( InteractiveObject ):
         self.align = align
         self.data = data
 
-        if font:
-            self.textfield = TextField( label, font, color=color, align=TextField.ALIGN_LEFT, wordwrap=False, autoAdjust=True )
-            self.textfield.selectable = False
-            self.addChild( self.textfield )
+        if isinstance(font, str): font = Font.getFont(font)
+        if not font: font = Font.getFirstFont()
+
+        self.textfield = UITextField( label, font, color=color, align=UITextField.ALIGN_LEFT, wordwrap=False, autoAdjust=True )
+        self.textfield.selectable = False
+        self.addChild( self.textfield )
 
         if normalBackground:
             self.background = normalBackground
@@ -154,13 +158,12 @@ class UIButton( InteractiveObject ):
 
     @property
     def label(self):
-        return self.textfield.text if self.textfield else ""
+        return self.textfield.text
 
     @label.setter
     def label(self, value):
-        if self.textfield:
-            self.textfield.clear()
-            self.textfield.insertHtml(value, 0)
+        self.textfield.clear()
+        self.textfield.insertHtml(value, 0)
 
     def click(self):
         self.onClick.fire( self )
@@ -179,17 +182,13 @@ class UIButton( InteractiveObject ):
             self.background.move(0,0,relativeToWorld=False)
             self.background.resize( self.width, self.height )
 
-        if self.textfield:
-            if self.autoAdjust:
-                self.textfield.move( (self.width-self.textfield.width) * 0.5,
-                                     (self.height-self.textfield.height) * 0.5 )
-            else:
-                self.textfield.move( self.padding[0] + (self.width-self.textfield.contentWidth) * self.align,
-                                     self.padding[1] + (self.height-self.textfield.contentHeight) * 0.5 )
-                self.textfield.resize( self.width - self.padding[0] - self.padding[2], self.height - self.padding[1] - self.padding[2] )
+        if not self.autoAdjust:
+            self.textfield.resize( self.width - self.padding[0] - self.padding[2], self.height - self.padding[1] - self.padding[2] )
 
+        self.textfield.move( (self.width-self.textfield.contentWidth) * ( self.align if not self.autoAdjust else 0.5 ),
+                             (self.height-self.textfield.contentHeight) * 0.5 )
 
-        if self.focus:
+        if self.isFocus:
             for event in events:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
@@ -203,9 +202,9 @@ class UIScrollbar( InteractiveObject ):
     DIRECTION_VERTICAL = 0
     DIRECTION_HORIZONTAL = 1
 
-    def __init__( self, bounds=None, visible=True, color=(60,60,60,255), selectable=True,
+    def __init__( self, name="", bounds=None, visible=True, color=(60,60,60,255), selectable=True,
                   background=None, drag=None, direction=DIRECTION_VERTICAL ):
-        super(UIScrollbar, self).__init__(bounds, visible, color, selectable)
+        super(UIScrollbar, self).__init__(name, bounds, visible, color, selectable)
         self.background = background if background else DisplayObject( color=(color[0]*1.3, color[1]*1.3, color[2]*1.3, color[3]) )
         self.drag = drag if drag else DisplayObject( color=(color[0], color[1], color[2], color[3]) )
         self.direction = direction
@@ -273,9 +272,9 @@ class UIScrollbar( InteractiveObject ):
 
 
 class UIList( DisplayObject ):
-    def __init__( self, bounds=None, visible=True, color=(100,100,100,100),
+    def __init__( self, name="", bounds=None, visible=True, color=(100,100,100,100),
                   options=[], font=None, scrollWidth=10, padding=(10,10,10,10), buttonHeight=32, onSelectHandler=None ):
-        super(UIList, self).__init__(bounds, visible, color)
+        super(UIList, self).__init__(name, bounds, visible, color)
 
         self.buttons = []
         self.onSelect = EventHook()
@@ -285,9 +284,9 @@ class UIList( DisplayObject ):
         self._scrollWidth = scrollWidth
         self._buttonHeight = buttonHeight
 
-        self.scrollbar = UIScrollbar( (self.width-padding[2]-self._scrollWidth, padding[1], self._scrollWidth, self.height - self._padding[1] - self._padding[3] ) )
-        self.mask = DisplayMask( (self._padding[0], self._padding[1], self.width - self._padding[2], self.height - self._padding[1] - self._padding[3]) )
-        self.grid = UIGrid( distanceHorizontal=100, distanceVertical=32, numberOfColumns=1, bounds=(0, 0) )
+        self.scrollbar = UIScrollbar( "scrollbar", (self.width-padding[2]-self._scrollWidth, padding[1], self._scrollWidth, self.height - self._padding[1] - self._padding[3] ) )
+        self.mask = DisplayMask( "mask", (self._padding[0], self._padding[1], self.width - self._padding[2], self.height - self._padding[1] - self._padding[3]) )
+        self.grid = UIGrid( name="grid", distanceHorizontal=100, distanceVertical=32, numberOfColumns=1, bounds=(0, 0) )
 
         self.addChild( self.mask, changePositionToRelative=True )
         self.addChild( self.scrollbar, changePositionToRelative=True )
@@ -305,7 +304,8 @@ class UIList( DisplayObject ):
         self._list = options
         self.clear()
         while len(self.buttons) < len(options):
-            button = UIButton( (0,0,self.width-self._padding[0]-self._padding[2]-self._scrollWidth,self._buttonHeight),
+            button = UIButton( "button"+len(self.buttons),
+                               (0,0,self.width-self._padding[0]-self._padding[2]-self._scrollWidth,self._buttonHeight),
                                font=self.font, padding=(6,0,6,0), autoAdjust=False,
                                align=UIButton.ALIGN_LEFT, onClickHandler=self.onClickButtonList )
             self.buttons.append( button )
@@ -333,3 +333,69 @@ class UIList( DisplayObject ):
 
     def __scrollEventHandler(self):
         self.mask.setScroll( self.mask.scrollH, self.scrollbar.getScrollForView() )
+
+
+try:
+    import xml.etree.cElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
+
+class UIDeserialize():
+    @staticmethod
+    def getContent( xmlAddress ):
+        xml = ET.parse( xmlAddress )
+        return UIDeserialize.getContentByElement( xml.getroot() )
+
+    @staticmethod
+    def getContentByElement( element ):
+        container = DisplayObject("root")
+        for child in element:
+            container.addChild( UIDeserialize.getDisplayByElement( child ), changePositionToRelative=True )
+        return container
+
+    @staticmethod
+    def getDisplayByElement( element ):
+        params = {}
+        for key, value in element.attrib.iteritems():
+            if value[0] == "#":
+                params[key] = value[1:]
+            else:
+                params[key] = eval(value)
+
+        for p in element:
+            if p.tag != "children":
+                params[p.tag] = p.text
+
+        display = eval(element.tag)( **params )
+
+        children = element.find("children")
+        if children:
+            for child in children:
+                display.addChild( UIDeserialize.getDisplayByElement( child ), changePositionToRelative=True )
+
+        return display
+
+    @staticmethod
+    def getBoundsByString( boundsString ):
+        m = re.match('\(?(?P<x>\d+)[ ,]*(?P<y>\d+)[ ,]*(?P<w>\d*)[ ,]*(?P<h>\d*)\)?', boundsString)
+        return ( int(m.group("x")) if m.group("x") else 0,
+                 int(m.group("y")) if m.group("y") else 0,
+                 int(m.group("w")) if m.group("w") else 0,
+                 int(m.group("h")) if m.group("h") else 0 )
+
+
+#talk = TalkView.root.findall(".//*[@id='"+TalkView.current_talk+"']/talk["+str(self.current+1)+"]")[0]
+# if talk.get("author") == "0":
+#d = dict(p1=1, p2=2)
+#for id in TalkView.callsIncoming:
+            #element = TalkView.root.findall(".//*[@id='"+id+"']")
+            #if len(element):
+             #   options.append(element[0].find("title").text)
+             #   ids.append(element[0].get("id"))
+d = {"p1":1, "p2":2}
+def f2(p1,p2):
+    print p1, p2
+f2(**d)
+
+#tree = ET.parse("radio.xml")
+#root = tree.getroot()

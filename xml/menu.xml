@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<data>
+    <UIImage imageAddress="#pytext/assets/ui/bg02.gif"/>
+    <UITextField bounds="( 133, 24, 215, 48 )"
+                 font="#sys_24_border"
+                 text="#PYTEXT"
+                 color="(70,215,237)"
+                 selectable="False"
+                 align="UITextField.ALIGN_CENTER" />
+    <UIGrid bounds="(120, 100)"
+            distanceHorizontal="0"
+            distanceVertical="40">
+        <children>
+            <UIButton name="#b0" label="#TEXTAREA" font="#sys_16_border" bounds="(0,0,240,40)" autoAdjust="False" color="(51, 255, 0)" padding="(0,0,0,0)" />
+            <UIButton name="#b1" label="#INPUTEXT" font="#sys_16_border" bounds="(0,0,240,40)" autoAdjust="False" color="(51, 255, 0)" padding="(0,0,0,0)" />
+            <UIButton name="#b2" label="#SCROLLBAR" font="#sys_16_border" bounds="(0,0,240,40)" autoAdjust="False" color="(51, 255, 0)" padding="(0,0,0,0)" />
+            <UIButton name="#b3" label="#LIST" font="#sys_16_border" bounds="(0,0,240,40)" autoAdjust="False" color="(51, 255, 0)" padding="(0,0,0,0)" />
+            <UIButton name="#b4" label="#EXIT" font="#sys_16_border" bounds="(0,0,240,40)" autoAdjust="False" color="(51, 255, 0)" padding="(0,0,0,0)" />
+        </children>
+    </UIGrid>
+
+</data>

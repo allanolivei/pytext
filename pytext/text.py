@@ -25,6 +25,7 @@ import os
 import re
 import pyperclip
 import time
+from random import randint
 from display import *
 
 #Function util
@@ -33,6 +34,35 @@ def clamp(value, minValue, maxValue): return min( maxValue , max( minValue, valu
 class Font(object):
 
     DEFAULT_KEY = "(255, 255, 255)"
+
+    _fonts = {}
+
+    @staticmethod
+    def getFont( name ):
+        return Font._fonts.get(name)
+
+    @staticmethod
+    def getAnyFont():
+        keys = Font._fonts.keys()
+        return Font._fonts.get( keys[randint(0, len(keys)-1)] ) if len(keys) > 0 else None
+
+    @staticmethod
+    def getFirstFont():
+        keys = Font._fonts.keys()
+        return Font._fonts.get( keys[0] ) if len(keys) > 0 else None
+
+    @staticmethod
+    def addFont( name, font, letterSpaceScale=1 ):
+        Font._fonts[name] = Font(font, letterSpaceScale) if isinstance(font, str) else font
+
+    @staticmethod
+    def addFonts( dict ):
+        for key, value in dict.iteritems():
+            Font.addFont( key, value )
+
+    @staticmethod
+    def removeFont( name ):
+        del Font._fonts[name]
 
     def __init__(self, fileName=None, letterSpaceScale=1):
         self.__isComplete = False
@@ -109,17 +139,21 @@ class Font(object):
 
 
 
-class TextField(InteractiveObject):
+class UITextField(InteractiveObject):
 
     ALIGN_LEFT = 0
     ALIGN_RIGHT = 1
     ALIGN_CENTER = 0.5
 
-    def __init__( self, text, font,
-                  bounds=None, visible=True, color=(0,0,0), selectable=True,
+    def __init__( self, text, font=None,
+                  name="", bounds=None, visible=True, color=(0,0,0), selectable=True,
                   wordwrap=False, letterSpacing=1, lineSpacing=1, inputText=False,
-                  autoAdjust=False, align=ALIGN_LEFT, htmlFontDict=None ):
-        super(TextField, self).__init__(bounds, visible, color, selectable)
+                  autoAdjust=False, align=ALIGN_LEFT ):
+        super(UITextField, self).__init__(name, bounds, visible, color, selectable)
+
+        if isinstance(font, str): font = Font.getFont(font)
+        if font == None: font = Font.getFirstFont()
+
         self._scrollV = 0
         self._scrollH = 0
         self.autoAdjust = autoAdjust
@@ -143,7 +177,7 @@ class TextField(InteractiveObject):
         #self.sinals = {180:{97:225}, 94:{}, 126:{}}
         #self.history = []
 
-        self.insertHtml(text, 0, font_dict=htmlFontDict)
+        self.insertHtml( text, 0 )
 
     @property
     def width(self): return self._bounds.width
@@ -154,13 +188,13 @@ class TextField(InteractiveObject):
     @width.setter
     def width(self, value):
         if value == self._bounds.width: return
-        super(TextField, self).width(value)
+        super(UITextField, self).width(value)
         self.updateLineData()
 
     @height.setter
     def height(self, value):
         if value == self._bounds.height: return
-        super(TextField, self).height(value)
+        super(UITextField, self).height(value)
         self.updateLineData()
 
     @property
@@ -171,6 +205,9 @@ class TextField(InteractiveObject):
         self.insert(content, len(self.text), 0, color, font)
 
     def insert(self, content, index, removeLength=0, color=None, font=None):
+
+        if isinstance(font, str): font = Font.getFont(font)
+
         index = clamp(index, 0, len(self.text))
 
         if removeLength > 0:
@@ -216,7 +253,7 @@ class TextField(InteractiveObject):
                     self.updateLineData( i )
                     break
 
-    def insertHtml(self, content, index=99999999, font_dict=None):
+    def insertHtml(self, content, index=99999999):
         index = clamp(index, 0, len(self.text))
         content = content if isinstance(content, unicode) else content.decode('utf-8')
         reg = r"\<(?P<is_closed>\/?)(?P<tag_type>\w+)\s?(?P<parameters>[^>]*)\>"
@@ -235,7 +272,7 @@ class TextField(InteractiveObject):
             else:
                 vars = dict( re.findall('(\w+) *= *[\"\']+([^ \n\"\']*)[\"\']+', m.group("parameters")) )
                 tagProperties.append(
-                    { "font": font_dict[ vars["face"] ] if vars.has_key("face") else None,
+                    { "font": Font.getFont( vars["face"] ) if vars.has_key("face") else None,
                       "color": self.hexToRgb(vars["color"]) if vars.has_key("color") else None }
                 )
         prop = tagProperties[len(tagProperties)-1]
@@ -250,6 +287,9 @@ class TextField(InteractiveObject):
         self.select(self.selectArea[0]+1)
 
     def setFont(self, init, end, font, color=None):
+
+        if isinstance(font, str): font = Font.getFont(font)
+
         fontIndex = self.getFontByIndex(init-1)
         if len(self.fonts) == 0:
             self.fonts.append({"end":len(self.text), "font":font, "color":color})
@@ -426,21 +466,21 @@ class TextField(InteractiveObject):
             self.select(self.selectArea[1]-1)
 
     def mouseDown(self, pos):
-        super(TextField, self).mouseDown(pos)
+        super(UITextField, self).mouseDown(pos)
         if ( pygame.key.get_mods() & pygame.KMOD_SHIFT ):
             self.select( self.selectArea[0], self.getCharIndexByPosition( pos[0]-self.worldX+self._scrollH, pos[1]-self.worldY+self._scrollV ) )
         else:
             self.select( self.getCharIndexByPosition( pos[0]-self.worldX+self._scrollH, pos[1]-self.worldY+self._scrollV ) )
 
     def mouseDrag(self, pos, delta):
-        super(TextField, self).mouseDrag(pos, delta)
+        super(UITextField, self).mouseDrag(pos, delta)
         self.select( self.selectArea[0], self.getCharIndexByPosition( pos[0]-self.worldX+self._scrollH, pos[1]-self.worldY+self._scrollV ) )
 
     def mouseWheel(self, scroll):
         self.addScroll(0, scroll * 20)
 
     def update(self, screen, events=None):
-        super(TextField, self).update(screen, events)
+        super(UITextField, self).update(screen, events)
         self.__checkEvents(events)
 
     def draw(self, screen, events):
@@ -533,12 +573,12 @@ class TextField(InteractiveObject):
                 int(result.group(3), 16)) if result else None
 
     def enterFocus(self):
-        super(TextField, self).enterFocus()
+        super(UITextField, self).enterFocus()
         self.previous_pygame_repeat = pygame.key.get_repeat()
         pygame.key.set_repeat(300,100)
 
     def exitFocus(self):
-        super(TextField, self).exitFocus()
+        super(UITextField, self).exitFocus()
         pygame.key.set_repeat( self.previous_pygame_repeat[0], self.previous_pygame_repeat[1] )
 
     def __drawSelectArea(self, destination):
@@ -776,7 +816,7 @@ class TextField(InteractiveObject):
 if __name__ == "__main__":
     screen = pygame.display.set_mode((480, 320))
 
-    t = TextField("Teste editor de texto",
+    t = UITextField("Teste editor de texto",
                   Font("assets/fonts/sys2_16.fnt"),
                   bounds=(0,0,480,320),
                   wordwrap=True,
